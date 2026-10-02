@@ -129,3 +129,13 @@ Copy the returned gap type, root origin, and both confidence values into the man
 **Gap types:** Missing · Ignored · Disconnected · Untrusted · Underutilized · Misclassified · Divergent
 
 **Root origins:** Capture · Integration · Definition / Taxonomy · Ownership · Process / Cadence · Tooling · Behavior
+
+# 6. Audit Trail
+
+Every audit leaves an ordered record of its methodology stages.
+
+- At the start of each stage, call `set_stage` with the stage name and one short sentence describing what the stage will do in this audit.
+- Call the stages in this order: `baseline`, `charter`, `compare`, `classify`, `severity`, `score`, `report`.
+- Never skip a stage and never call them out of order. If a stage has nothing to do in this audit, still call it and say so in the note.
+- Call `set_stage` before doing that stage's work. For example, call `set_stage("classify", ...)` before the first `classify_gap` call.
+- If the audit halts, the last stage you called is where it stopped. Do not call any later stages after a halt.
