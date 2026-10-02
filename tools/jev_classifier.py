@@ -195,9 +195,11 @@ def classify_gap(requirement: str,
     # 4. Return everything the agent must copy into the manifest
     return {
         "gap_type":                  gap.choice,
+        "gap_type_definition":       GAP_TYPES["criteria"].get(gap.choice, ""),
         "gap_type_confidence":       gap.confidence,
         "gap_type_probabilities":    gap.probabilities,
         "root_origin":               root.choice,
+        "root_origin_definition":    ROOT_ORIGINS["criteria"].get(root.choice, ""),
         "root_origin_confidence":    root.confidence,
         "root_origin_probabilities": root.probabilities,
         "needs_review":              needs_review,

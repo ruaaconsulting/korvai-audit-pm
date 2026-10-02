@@ -104,12 +104,37 @@ def rate_severity(requirement: str, evidence: str, expected: str,
         level = _most_probable_level(answer, key)
         levels[key] = level
         result[key] = level["name"]
+        result[f"{key}_score"] = level["score"]
         result[f"{key}_confidence"] = answer.confidence
         result[f"{key}_position"] = answer.score
         result[f"{key}_probabilities"] = answer.probabilities
 
     score = math.prod(level["score"] for level in levels.values())
     band, floor_applied = _band(score, levels["decision_impact"]["name"])
+
+    # What-if: for each uncertain dimension, what would the runner-up level change?
+    what_if = []
+    for key in EXPECTED_LEVELS:
+        if result[f"{key}_confidence"] >= CONFIDENCE_THRESHOLD:
+            continue  # Jev was confident on this dimension: nothing to ask the reviewer
+        probs = response.scores[key].probabilities
+        ranked = sorted(probs, key=probs.get, reverse=True)
+        if len(ranked) < 2:
+            continue
+        alt_level = DIMENSIONS[key]["levels"][ranked[1]]
+        alt_levels = {**levels, key: alt_level}
+        alt_score = math.prod(level["score"] for level in alt_levels.values())
+        alt_band, _ = _band(alt_score, alt_levels["decision_impact"]["name"])
+        what_if.append({
+            "dimension": key,
+            "current": levels[key]["name"],
+            "current_probability": probs[ranked[0]],
+            "alternative": alt_level["name"],
+            "alternative_probability": probs[ranked[1]],
+            "alternative_score": alt_score,
+            "alternative_band": alt_band,
+            "band_changes": alt_band != band,
+        })
 
     needs_review = any(
         result[f"{key}_confidence"] < CONFIDENCE_THRESHOLD for key in EXPECTED_LEVELS
@@ -119,6 +144,7 @@ def rate_severity(requirement: str, evidence: str, expected: str,
         "severity": band,
         "severity_score": score,
         "floor_applied": floor_applied,
+        "what_if": what_if,
         **result,
         "needs_review": needs_review,
         "threshold_used": CONFIDENCE_THRESHOLD,
