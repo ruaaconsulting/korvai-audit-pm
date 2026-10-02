@@ -1,0 +1,46 @@
+name: Severity Matrix
+version: 1.2.0
+description: >
+  Three-dimension severity rubric (Decision Impact × Spread × Persistence).
+  Jev rates each dimension against its levels; code computes score, band and floor rule.
+
+# Each dimension becomes one Jev Score question.
+# Levels are ordered lowest to highest. "meaning" is what Jev reads; "score" is what code multiplies.
+dimensions:
+  decision_impact:
+    question: How badly does this gap distort a decision? Judge the magnitude of consequence, not how widely it reaches.
+    levels:
+      - { name: Low,      score: 1, meaning: "Cosmetic — the decision is unaffected" }
+      - { name: Medium,   score: 2, meaning: "Misinforms — decision-makers see a distorted picture" }
+      - { name: High,     score: 3, meaning: "Drives a wrong decision — funding, gating, or prioritization made on bad data" }
+      - { name: Critical, score: 4, meaning: "A strategic, regulatory, or mission-critical decision is made on bad data" }
+
+  spread:
+    question: How widely does this gap reach, from a single record up to the whole enterprise?
+    levels:
+      - { name: Local,      score: 1, meaning: "Limited to a single record or artifact" }
+      - { name: Project,    score: 2, meaning: "Affects one project" }
+      - { name: Program,    score: 3, meaning: "Affects multiple projects within a program" }
+      - { name: Portfolio,  score: 4, meaning: "Affects multiple programs across a portfolio" }
+      - { name: Enterprise, score: 5, meaning: "Affects the enterprise as a whole" }
+
+  persistence:
+    question: How long has this gap existed without effective resolution?
+    levels:
+      - { name: Temporary,  score: 1, meaning: "One reporting cycle or isolated occurrence" }
+      - { name: Recurring,  score: 2, meaning: "Appears across multiple reporting cycles or multiple iterations" }
+      - { name: Sustained,  score: 3, meaning: "Exists for several months and affects ongoing delivery" }
+      - { name: Systematic, score: 4, meaning: "Embedded within organizational practices over an extended period" }
+
+# Score = Persistence × Spread × Decision Impact (range 1–80).
+# Bands are checked in order; "max" is inclusive; the last band has no maximum.
+bands:
+  - { name: Low,      max: 8 }
+  - { name: Medium,   max: 24 }
+  - { name: High,     max: 48 }
+  - { name: Critical, max: null }
+
+# A strategic or regulatory decision made on bad data is never a low-severity finding.
+floor_rule:
+  when_decision_impact: Critical
+  minimum_band: High

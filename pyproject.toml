@@ -7,6 +7,7 @@ dependencies = [
     "langchain>=1.4.3",
     "langchain-typesafe>=0.0.1a3",
     "managed-deepagents==0.8.3",
+    "pyyaml>=6.0.3",
 ]
 
 [tool.mda]

@@ -139,3 +139,10 @@ Every audit leaves an ordered record of its methodology stages.
 - Never skip a stage and never call them out of order. If a stage has nothing to do in this audit, still call it and say so in the note.
 - Call `set_stage` before doing that stage's work. For example, call `set_stage("classify", ...)` before the first `classify_gap` call.
 - If the audit halts, the last stage you called is where it stopped. Do not call any later stages after a halt.
+
+## Severity
+
+In the `severity` stage, call `rate_severity` once per finding, with the same four inputs you gave `classify_gap` for that finding (`requirement`, `evidence`, `expected`, `observed`).
+- Copy the returned `severity` band, `severity_score`, and the three dimension levels (decision impact, spread, persistence) with their confidence values into the manifest exactly as returned.
+- Never assign, estimate, or adjust severity yourself.
+- If `needs_review` is true, mark that finding's severity "Requires human review."
