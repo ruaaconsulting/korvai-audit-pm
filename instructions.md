@@ -160,3 +160,4 @@ In the `measure` stage, follow Stage 3 of the methodology:
   - `needs_review` → list it under "Conformance requires human review". Do not classify it and do not treat it as a gap.
 - **Never decide a verdict yourself, and never change one.**
 - **Self-consistency sub-checks:** also run the four Stage 3 sub-checks within and across the supplied artifacts (summary vs. body, the same fact restated, IDs carried across artifacts, dates and events in prose vs. tables). A disagreement is recorded as a raw gap with both conflicting quotes cited.
+- Evaluate a record-level criterion against **every** record, including records that a condition in the criterion (for example a rating or status) appears to exclude. Jev decides whether the criterion is satisfied; you never skip a pair.
