@@ -1,0 +1,21 @@
+name: IEM-PM Audit Stages
+source: audit-stages.md
+source_version: 1.8.0
+
+# The audit state machine, in order. Names are the stage headings in audit-stages.md.
+# performed_by:
+#   judgment      — Stages 0–7 (Stage 7: "Everything after this is deterministic.")
+#   deterministic — Stages 8–9 are marked "(deterministic)" in their headings;
+#                   Stage 10 follows Stage 7's statement above.
+stages:
+  - { number: 0,  key: baseline,           name: "Baseline",                          performed_by: judgment }
+  - { number: 1,  key: charter,            name: "Charter",                           performed_by: judgment }
+  - { number: 2,  key: define,             name: "Define",                            performed_by: judgment }
+  - { number: 3,  key: measure,            name: "Measure",                           performed_by: judgment }
+  - { number: 4,  key: classify,           name: "Classify",                          performed_by: judgment }
+  - { number: 5,  key: trace,              name: "Trace",                             performed_by: judgment }
+  - { number: 6,  key: engineer_and_score, name: "Engineer & Score",                  performed_by: judgment }
+  - { number: 7,  key: synthesize,         name: "Synthesize (the Manifest Gate)",    performed_by: judgment }
+  - { number: 8,  key: findings_json,      name: "Findings JSON",                     performed_by: deterministic }
+  - { number: 9,  key: render,             name: "Render",                            performed_by: deterministic }
+  - { number: 10, key: final_summary,      name: "Final Summary",                     performed_by: deterministic }

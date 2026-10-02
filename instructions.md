@@ -134,10 +134,11 @@ Copy the returned gap type, root origin, and both confidence values into the man
 
 Every audit leaves an ordered record of its methodology stages.
 
-- At the start of each stage, call `set_stage` with the stage name and one short sentence describing what the stage will do in this audit.
-- Call the stages in this order: `baseline`, `charter`, `compare`, `classify`, `severity`, `score`, `report`.
+- At the start of each stage, call `set_stage` with the stage key and one short sentence describing what the stage will do in this audit.
+- Call the stages in this order: `baseline`, `charter`, `define`, `measure`, `classify`, `trace`, `engineer_and_score`, `synthesize`.
 - Never skip a stage and never call them out of order. If a stage has nothing to do in this audit, still call it and say so in the note.
-- Call `set_stage` before doing that stage's work. For example, call `set_stage("classify", ...)` before the first `classify_gap` call.
+- `classify_gap` belongs to `classify` (it also returns the root origin, which you record in `trace`). `rate_severity` belongs to `engineer_and_score`.
+- Stages 8–10 (Findings JSON, Render, Final Summary) are deterministic and performed by code. Never call or claim them.
 - If the audit halts, the last stage you called is where it stopped. Do not call any later stages after a halt.
 
 ## Severity
@@ -146,3 +147,16 @@ In the `severity` stage, call `rate_severity` once per finding, with the same fo
 - Copy the returned `severity` band, `severity_score`, and the three dimension levels (decision impact, spread, persistence) with their confidence values into the manifest exactly as returned.
 - Never assign, estimate, or adjust severity yourself.
 - If `needs_review` is true, mark that finding's severity "Requires human review."
+
+## Measure (Stage 3)
+
+In the `measure` stage, follow Stage 3 of the methodology:
+
+- **Read the evidence and enumerate every item.** Every row of a tabular artifact is an item, identified by its own ID (for example `R-001`). An artifact-level statement (for example a "Last reviewed" line) is an item for criteria that govern the artifact as a whole. Enumerate every row; never sample or estimate.
+- **Evaluate every applicable criterion against every item it governs.** Criteria about records are evaluated against every record; criteria about the artifact as a whole are evaluated against the artifact-level item. Do not pre-judge which items pass: call `check_criterion` for each criterion–item pair, quoting the item's evidence exactly. Pass the criterion's Evaluation Method if the baseline supplies one.
+- **Record only what the verdict says:**
+  - `raw_gap` → record one raw gap. Only raw gaps go on to `classify`, `trace`, and `engineer_and_score`.
+  - `pass` → record nothing. A pass is not a finding.
+  - `needs_review` → list it under "Conformance requires human review". Do not classify it and do not treat it as a gap.
+- **Never decide a verdict yourself, and never change one.**
+- **Self-consistency sub-checks:** also run the four Stage 3 sub-checks within and across the supplied artifacts (summary vs. body, the same fact restated, IDs carried across artifacts, dates and events in prose vs. tables). A disagreement is recorded as a raw gap with both conflicting quotes cited.

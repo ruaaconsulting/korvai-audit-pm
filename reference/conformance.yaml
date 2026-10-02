@@ -1,0 +1,17 @@
+name: Conformance Evaluation (Stage 3 — Measure)
+version: 1.0.0
+source: audit-stages.md, Stage 3 — Measure, Activities 2 and 4
+
+# Activity 2: apply the criterion's Evaluation Method against the observed evidence.
+# Activity 4: where the evidence does not satisfy a criterion, record one raw gap;
+#             where it satisfies the criterion, record nothing — a pass is not a finding.
+criterion_evaluation:
+  instructions: Apply the criterion's Evaluation Method against the observed evidence. Does the evidence satisfy the criterion?
+  "true": The evidence satisfies the criterion.
+  "false": The evidence does not satisfy the criterion.
+
+# Decision thresholds on Jev's yes-probability. Calibration values, set by the methodology owner.
+# satisfied → no finding · not satisfied → raw gap · in between → human review
+decision:
+  satisfied_at_or_above: 0.70
+  not_satisfied_at_or_below: 0.30
