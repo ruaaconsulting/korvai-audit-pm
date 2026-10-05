@@ -130,6 +130,19 @@ def supplied_text(runtime: ToolRuntime) -> str:
 
     return normalize(" ".join(parts))
 
+# ───────── helper 3: one or more verbatim quotes ─────────
+def evidence_quotes(evidence: str) -> list[str]:
+    """A consolidated gap cites one quote per failing record, one per line."""
+    return [line.strip() for line in evidence.splitlines() if line.strip()]
+
+
+def all_verbatim(evidence: str, runtime: ToolRuntime) -> bool:
+    """Every quote (one per line) must appear word for word in what the user supplied."""
+    quotes = evidence_quotes(evidence)
+    source = supplied_text(runtime)
+    return bool(quotes) and all(normalize(q) in source for q in quotes)
+
+
 @tool(parse_docstring=True)
 def classify_gap(requirement: str,
                  evidence: str,
@@ -143,18 +156,18 @@ def classify_gap(requirement: str,
 
     Args:
         requirement: The baseline clause, quoted exactly.
-        evidence: An exact, unedited quote from the supplied evidence; no "..." and no trimming inside the quote.
+        evidence: Exact, unedited quotes from the supplied evidence, one quote per line (one line per failing record for a consolidated gap); no "..." and no trimming inside a quote.
         expected: What the clause requires, in a few words (e.g. "a named individual owner").
         observed: What the evidence shows, in a few words (e.g. "Owner: TBD").
     """
     # NOTE: runtime is injected by LangChain; the agent never sees or fills it.
 
     # 1. Verbatim check, BEFORE spending anything on Jev
-    if normalize(evidence) not in supplied_text(runtime):
+    if not all_verbatim(evidence, runtime):
         return {
             "error": "evidence_not_verbatim",
             "message": ("The evidence is not an exact quote from the supplied material. "
-                        "Copy it word for word, with no '...' and no edits, and call again."),
+                        "Copy each quote word for word, one per line, with no '...' and no edits, and call again."),
             "evidence_verified": False,
         }
         # do NOT call Jev
@@ -217,4 +230,4 @@ def classify_gap(requirement: str,
         },
         "evidence_verified": True,
         "variance_sent":     variance,
-    }
+    }

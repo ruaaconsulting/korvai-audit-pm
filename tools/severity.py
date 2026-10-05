@@ -8,55 +8,55 @@ from langchain_typesafe import Score
 from tools.jev_classifier import (
     classifier,
     CONFIDENCE_THRESHOLD,
-    normalize,
-    supplied_text,
+    all_verbatim,
     REFERENCE_DIR,
 )
 
-# ───────── 1. Load the rubric once, at startup ─────────
-_RAW = (REFERENCE_DIR / "severity-matrix.yaml").read_text(encoding="utf-8")
-RUBRIC = yaml.safe_load(_RAW)
 
-SEVERITY_VERSION = str(RUBRIC["version"])
-SEVERITY_FINGERPRINT = hashlib.sha256(_RAW.encode("utf-8")).hexdigest()[:12]
+def _load(name: str):
+    raw = (REFERENCE_DIR / name).read_text(encoding="utf-8")
+    return yaml.safe_load(raw), hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
+
+
+# ───────── 1. Official severity: scoring.md §9.1 (Severity 1–5) ─────────
+SCALE, SCALE_FP = _load("severity-scale.yaml")
+LEVELS = SCALE["levels"]
+APPROVAL_AT = int(SCALE["human_approval_required_at_or_above"])
+
+if [lv["severity"] for lv in LEVELS] != [1, 2, 3, 4, 5]:
+    raise ValueError("severity-scale.yaml: levels must be severities 1..5 in order")
+if not 1 <= APPROVAL_AT <= 5:
+    raise ValueError("severity-scale.yaml: human_approval_required_at_or_above must be 1..5")
+
+SEVERITY_QUESTION = Score(
+    instructions=SCALE["instructions"],
+    # Each level: its definition plus the "When to Apply" examples from §9.1
+    criteria=[{"what": lv["what"], "examples": lv["examples"]} for lv in LEVELS],
+)
+
+# ───────── 2. Calibration reference: Appendix D (severity-matrix.yaml) ─────────
+RUBRIC, RUBRIC_FP = _load("severity-matrix.yaml")
 DIMENSIONS = RUBRIC["dimensions"]
 BANDS = RUBRIC["bands"]
 FLOOR = RUBRIC["floor_rule"]
 BAND_NAMES = [b["name"] for b in BANDS]
-
-# ───────── 2. Startup checks: refuse to run on a malformed rubric ─────────
 EXPECTED_LEVELS = {"decision_impact": 4, "spread": 5, "persistence": 4}
 
 for key, count in EXPECTED_LEVELS.items():
-    scores = [level["score"] for level in DIMENSIONS[key]["levels"]]
+    scores = [lv["score"] for lv in DIMENSIONS[key]["levels"]]
     if scores != list(range(1, count + 1)):
         raise ValueError(f"severity-matrix.yaml: {key} must have scores 1..{count}, found {scores}")
-
 if BAND_NAMES != ["Low", "Medium", "High", "Critical"]:
     raise ValueError(f"severity-matrix.yaml: unexpected bands {BAND_NAMES}")
 
-if FLOOR["minimum_band"] not in BAND_NAMES:
-    raise ValueError("severity-matrix.yaml: floor_rule.minimum_band is not a band name")
 
-
-# ───────── 3. Small helpers ─────────
-def _question(key: str) -> Score:
-    """One Jev Score question: the dimension's question, levels as ordered descriptions."""
+def _dimension_question(key: str) -> Score:
     dim = DIMENSIONS[key]
-    return Score(
-        instructions=dim["question"],
-        criteria=[level["meaning"] for level in dim["levels"]],
-    )
-
-
-def _most_probable_level(answer, key: str) -> dict:
-    """The level Jev found most probable (not the rounded score)."""
-    best_index = max(answer.probabilities, key=answer.probabilities.get)
-    return DIMENSIONS[key]["levels"][best_index]
+    return Score(instructions=dim["question"],
+                 criteria=[lv["meaning"] for lv in dim["levels"]])
 
 
 def _band(score: int, decision_impact_name: str) -> tuple[str, bool]:
-    """Band from the score, then the floor rule."""
     band = next(b["name"] for b in BANDS if b["max"] is None or score <= b["max"])
     if (decision_impact_name == FLOOR["when_decision_impact"]
             and BAND_NAMES.index(band) < BAND_NAMES.index(FLOOR["minimum_band"])):
@@ -64,23 +64,26 @@ def _band(score: int, decision_impact_name: str) -> tuple[str, bool]:
     return band, False
 
 
-# ───────── 4. The tool ─────────
+def _ranked(probabilities: dict) -> list:
+    return sorted(probabilities, key=probabilities.get, reverse=True)
+
+
+# ───────── 3. The tool ─────────
 @tool(parse_docstring=True)
 def rate_severity(requirement: str, evidence: str, expected: str,
                   observed: str, runtime: ToolRuntime) -> dict:
     """
-    Rate the severity of one audit finding using Jev on three dimensions
-    (Decision Impact, Spread, Persistence). The score and band are computed
-    by code and are final; use them exactly as returned.
+    Rate the severity of one finding using Jev. The official severity is the
+    1–5 rating defined in scoring.md §9.1; the three Appendix D dimensions are
+    returned as calibration reference only. Use the results exactly as returned.
 
     Args:
         requirement: The baseline clause, quoted exactly.
-        evidence: An exact, unedited quote from the supplied evidence.
+        evidence: Exact, unedited quotes from the supplied evidence, one quote per line (one line per failing record for a consolidated gap).
         expected: What the clause requires, in a few words.
         observed: What the evidence shows, in a few words.
     """
-    # a. Verbatim check, same as classify_gap: no Jev call if it fails
-    if normalize(evidence) not in supplied_text(runtime):
+    if not all_verbatim(evidence, runtime):
         return {
             "error": "evidence_not_verbatim",
             "message": "Quote the evidence exactly and call again.",
@@ -90,66 +93,56 @@ def rate_severity(requirement: str, evidence: str, expected: str,
     variance = f"Required: {expected}. Observed: {observed}."
     state = {"requirement": requirement, "evidence": evidence, "variance": variance}
 
-    # b. One Jev call, three Score questions
-    response = classifier.invoke({
-        "state": state,
-        "questions": {key: _question(key) for key in EXPECTED_LEVELS},
-    })
+    # One Jev call: the official severity plus the three calibration dimensions
+    questions = {"severity": SEVERITY_QUESTION}
+    questions.update({key: _dimension_question(key) for key in EXPECTED_LEVELS})
+    response = classifier.invoke({"state": state, "questions": questions})
 
-    # c. Jev judges each dimension; code does the arithmetic
-    result = {}
-    levels = {}
+    # a. Official severity (§9.1): the most probable level
+    sev = response.scores["severity"]
+    order = _ranked(sev.probabilities)
+    level = LEVELS[order[0]]
+    runner = LEVELS[order[1]] if len(order) > 1 else None
+    approval_required = level["severity"] >= APPROVAL_AT
+
+    # b. Calibration reference (Appendix D), computed exactly as before
+    calibration, levels_chosen = {}, {}
     for key in EXPECTED_LEVELS:
         answer = response.scores[key]
-        level = _most_probable_level(answer, key)
-        levels[key] = level
-        result[key] = level["name"]
-        result[f"{key}_score"] = level["score"]
-        result[f"{key}_confidence"] = answer.confidence
-        result[f"{key}_position"] = answer.score
-        result[f"{key}_probabilities"] = answer.probabilities
-
-    score = math.prod(level["score"] for level in levels.values())
-    band, floor_applied = _band(score, levels["decision_impact"]["name"])
-
-    # What-if: for each uncertain dimension, what would the runner-up level change?
-    what_if = []
-    for key in EXPECTED_LEVELS:
-        if result[f"{key}_confidence"] >= CONFIDENCE_THRESHOLD:
-            continue  # Jev was confident on this dimension: nothing to ask the reviewer
-        probs = response.scores[key].probabilities
-        ranked = sorted(probs, key=probs.get, reverse=True)
-        if len(ranked) < 2:
-            continue
-        alt_level = DIMENSIONS[key]["levels"][ranked[1]]
-        alt_levels = {**levels, key: alt_level}
-        alt_score = math.prod(level["score"] for level in alt_levels.values())
-        alt_band, _ = _band(alt_score, alt_levels["decision_impact"]["name"])
-        what_if.append({
-            "dimension": key,
-            "current": levels[key]["name"],
-            "current_probability": probs[ranked[0]],
-            "alternative": alt_level["name"],
-            "alternative_probability": probs[ranked[1]],
-            "alternative_score": alt_score,
-            "alternative_band": alt_band,
-            "band_changes": alt_band != band,
-        })
-
-    needs_review = any(
-        result[f"{key}_confidence"] < CONFIDENCE_THRESHOLD for key in EXPECTED_LEVELS
-    )
+        chosen = DIMENSIONS[key]["levels"][_ranked(answer.probabilities)[0]]
+        levels_chosen[key] = chosen
+        calibration[key] = chosen["name"]
+        calibration[f"{key}_score"] = chosen["score"]
+        calibration[f"{key}_confidence"] = answer.confidence
+    cal_score = math.prod(lv["score"] for lv in levels_chosen.values())
+    cal_band, floor_applied = _band(cal_score, levels_chosen["decision_impact"]["name"])
+    calibration.update({
+        "band": cal_band,
+        "score": cal_score,
+        "floor_applied": floor_applied,
+        "rubric": {"version": str(RUBRIC["version"]), "fingerprint": RUBRIC_FP},
+    })
 
     return {
-        "severity": band,
-        "severity_score": score,
-        "floor_applied": floor_applied,
-        "what_if": what_if,
-        **result,
-        "needs_review": needs_review,
+        # Official severity: what the Manifest records
+        "severity": level["severity"],
+        "severity_label": level["label"],
+        "severity_confidence": sev.confidence,
+        "severity_probabilities": {LEVELS[i]["label"]: p for i, p in sev.probabilities.items()},
+        "severity_runner_up": None if runner is None else {
+            "severity": runner["severity"],
+            "label": runner["label"],
+            "probability": sev.probabilities[order[1]],
+            "approval_required": runner["severity"] >= APPROVAL_AT,
+        },
+        "human_approval_required": approval_required,
+        "needs_review": sev.confidence < CONFIDENCE_THRESHOLD,
         "threshold_used": CONFIDENCE_THRESHOLD,
+        # Calibration reference: shown, never parsed
+        "calibration": calibration,
+        "severity_scale": {"source": SCALE["source"], "version": str(SCALE["version"]),
+                           "fingerprint": SCALE_FP},
         "evidence_verified": True,
         "variance_sent": variance,
         "classified_by": response.model,
-        "severity_rubric": {"version": SEVERITY_VERSION, "fingerprint": SEVERITY_FINGERPRINT},
     }

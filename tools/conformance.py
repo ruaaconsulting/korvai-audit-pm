@@ -39,7 +39,7 @@ QUESTION = Noul(
 
 # ───────── 3. The tool ─────────
 @tool(parse_docstring=True)
-def check_criterion(clause_id: str, requirement: str, item_id: str,
+def check_criterion(clause_id: str, requirement: str, artifact_id: str, item_id: str,
                     evidence: str, runtime: ToolRuntime,
                     evaluation_method: str = "") -> dict:
     """
@@ -50,6 +50,7 @@ def check_criterion(clause_id: str, requirement: str, item_id: str,
     Args:
         clause_id: The criterion identifier, for example "RS-1".
         requirement: The criterion text, quoted exactly from the baseline.
+        artifact_id: The artifact the item belongs to, for example "ART-001".
         item_id: The evidence item identifier, for example "R-001" or "Register header".
         evidence: An exact, unedited quote of that evidence item.
         evaluation_method: The criterion's Evaluation Method, if the baseline supplies one; otherwise leave empty.
@@ -83,6 +84,7 @@ def check_criterion(clause_id: str, requirement: str, item_id: str,
 
     return {
         "clause_id": clause_id,
+        "artifact_id": artifact_id,
         "item_id": item_id,
         "verdict": verdict,
         "is_finding": verdict == "raw_gap",

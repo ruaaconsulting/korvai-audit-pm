@@ -153,11 +153,31 @@ In the `severity` stage, call `rate_severity` once per finding, with the same fo
 In the `measure` stage, follow Stage 3 of the methodology:
 
 - **Read the evidence and enumerate every item.** Every row of a tabular artifact is an item, identified by its own ID (for example `R-001`). An artifact-level statement (for example a "Last reviewed" line) is an item for criteria that govern the artifact as a whole. Enumerate every row; never sample or estimate.
-- **Evaluate every applicable criterion against every item it governs.** Criteria about records are evaluated against every record; criteria about the artifact as a whole are evaluated against the artifact-level item. Do not pre-judge which items pass: call `check_criterion` for each criterion–item pair, quoting the item's evidence exactly. Pass the criterion's Evaluation Method if the baseline supplies one.
+- **Evaluate every applicable criterion against every item it governs.** Criteria about records are evaluated against every record; criteria about the artifact as a whole are evaluated against the artifact-level item. Do not pre-judge which items pass: call `check_criterion` for each criterion–item pair, with the item's `artifact_id` (for example `ART-001`) and its evidence quoted exactly. Pass the criterion's Evaluation Method if the baseline supplies one.
 - **Record only what the verdict says:**
-  - `raw_gap` → record one raw gap. Only raw gaps go on to `classify`, `trace`, and `engineer_and_score`.
+  - `raw_gap` → the record fails the criterion. Only raw gaps go on to `classify`, `trace`, and `engineer_and_score`.
+  - **Consolidate (Stage 3, Activity 7):** `raw_gap` verdicts that share the same criterion and the same artifact are **one raw gap**, with one evidence quote per failing record — never one gap per row. Raw gaps for different criteria or different artifacts stay separate. Never drop a failing record.
+  - For each consolidated raw gap, call `classify_gap` and `rate_severity` **once**, passing every failing record's exact quote in `evidence`, **one quote per line**.
   - `pass` → record nothing. A pass is not a finding.
   - `needs_review` → list it under "Conformance requires human review". Do not classify it and do not treat it as a gap.
 - **Never decide a verdict yourself, and never change one.**
 - **Self-consistency sub-checks:** also run the four Stage 3 sub-checks within and across the supplied artifacts (summary vs. body, the same fact restated, IDs carried across artifacts, dates and events in prose vs. tables). A disagreement is recorded as a raw gap with both conflicting quotes cited.
 - Evaluate a record-level criterion against **every** record, including records that a condition in the criterion (for example a rating or status) appears to exclude. Jev decides whether the criterion is satisfied; you never skip a pair.
+
+## Synthesize (Stage 7): the Manifest Gate
+
+In the `synthesize` stage:
+
+1. **Read the `audit-manifest` skill first** and write the Audit Manifest exactly in that format. Software parses it.
+2. **Header:** fill every field. **Status** is `PROVISIONAL` when no ratified Charter was supplied. Where a provenance value genuinely cannot be stated (Charter Version, Skill Version, Model), write `unknown`; never guess.
+3. **Per-artifact evidence log:** one `## ARTIFACT:` block per supplied artifact, numbered `ART-001`, `ART-002`, … **Checksum:** call `artifact_checksum` with the artifact's complete text exactly as supplied, and copy the returned checksum. **Path:** the file path, or `supplied in conversation` for pasted text.
+4. **Findings:** exactly one `### FINDING:` block per **consolidated** raw gap from Measure (one per criterion + artifact); never more, never fewer.
+   - **Clause:** the same clause ID used in `check_criterion` (for example `RS-1`).
+   - **Gap Type** and **Root Origin:** exactly as returned by `classify_gap`.
+   - **Severity:** exactly the 1–5 `severity` returned by `rate_severity`.
+   - **Human Approved (Severity 4 or 5):** before submitting, call `request_human_approval` **once** with every Severity 4–5 finding (clause_id, artifact_id, severity, severity_label, and a one-sentence summary). The audit pauses until a real person answers. For each finding the tool returns as `approved`, write `Human Approved: Yes`, and copy **Approved By** and **Approval Date** exactly as returned. If any finding comes back `rejected`, `incomplete` or `no_decision`, do not submit: tell the user which finding and why, and stop. Never write `Yes` without a recorded approval. Omit the field for Severity 1–3.
+   - **Evidence bullets:** one bullet **per failing record**: `**Artifact:** ART-xxx | **Location:** <the item ID, e.g. R-001> | **Evidence:** <the exact verbatim quote used in check_criterion>`.
+   - Requirement Summary, Description, Impact, Recommended Action and Intelligence Dimensions follow the skill's rules.
+5. **Synthesis and Appendix:** as the skill specifies. The synthesis is narrative only, with no scores.
+6. **Call `submit_manifest`** with the complete Manifest. If it returns `accepted: false`, fix **every** listed error and submit again. Never claim Stages 8–10 yourself; code runs them.
+7. **After acceptance,** present the returned final summary, the Reporting Integrity Score, and who approved each Severity 4–5 finding.

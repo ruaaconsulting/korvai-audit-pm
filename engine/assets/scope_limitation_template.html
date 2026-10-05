@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IEM-PM Scope Limitation Notice — {{ notice.audit_id }}</title>
+    <style>
+        :root {
+            --primary: #c41e3a;
+            --primary-light: #f8e8eb;
+            --dark: #1a1a1a;
+            --gray: #666;
+            --light-gray: #f5f5f5;
+            --border: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: var(--dark);
+        }
+        h1 {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        h2 {
+            color: var(--primary);
+            margin-top: 2.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.3rem;
+            font-size: 1.4rem;
+        }
+        h3 {
+            color: #333;
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+        }
+        .meta {
+            background: var(--light-gray);
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+        .section { margin-bottom: 3rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.7rem;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--light-gray);
+            font-weight: 600;
+        }
+        .narrative {
+            font-style: italic;
+            color: #444;
+            line-height: 1.8;
+            padding: 0.5rem 0;
+        }
+        .footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 2px solid #eee;
+            color: var(--gray);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .action-list {
+            padding-left: 1.2rem;
+        }
+        .action-list li {
+            margin: 0.6rem 0;
+            line-height: 1.5;
+        }
+        .highlight {
+            background: var(--primary-light);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        .status-present { color: #28a745; font-weight: 600; }
+        .status-missing { color: var(--primary); font-weight: 600; }
+        .mandatory-tag {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.1rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 0.4rem;
+        }
+        .opinion-box {
+            background: var(--primary-light);
+            border-left: 4px solid var(--primary);
+            padding: 1.2rem;
+            border-radius: 0 6px 6px 0;
+        }
+    </style>
+</head>
+<body>
+
+<h1>IEM-PM Scope Limitation Notice</h1>
+
+<div class="meta">
+    <strong>Audit ID:</strong> {{ notice.audit_id }} &nbsp;|&nbsp;
+    <strong>Standards Baseline:</strong> {{ notice.standards_declared | join(", ") }} &nbsp;|&nbsp;
+    <strong>Generated:</strong> {{ generated_at }} &nbsp;|&nbsp;
+    <strong>Status:</strong> <span class="status-missing">SCOPE LIMITED — NO OPINION ISSUED</span>
+</div>
+
+<!-- 1. Executive Summary -->
+<div class="section">
+    <h2>1. Executive Summary</h2>
+    <p>{{ notice.executive_summary }}</p>
+</div>
+
+<!-- 2. Coverage Analysis -->
+<div class="section">
+    <h2>2. Coverage Analysis</h2>
+    <table>
+        <tr>
+            <th>Category</th>
+            <th>Domain</th>
+            <th>Status</th>
+            <th>Artifact(s) Mapped</th>
+        </tr>
+        {% for c in categories %}
+        <tr>
+            <td>{{ c.letter }} — {{ c.name }}{% if c.mandatory %}<span class="mandatory-tag">Mandatory</span>{% endif %}</td>
+            <td>{{ c.domain }}</td>
+            <td>
+                {% if c.present %}
+                <span class="status-present">Present</span>
+                {% else %}
+                <span class="status-missing">Missing</span>
+                {% endif %}
+            </td>
+            <td>{{ c.artifacts | join(", ") if c.artifacts else "—" }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <p>{{ categories | selectattr("present") | list | length }} of {{ categories | length }} categories
+    represented. {{ notice.artifact_count }} distinct artifact(s) supplied.</p>
+</div>
+
+<!-- 3. Mandatory Failures -->
+<div class="section">
+    <h2>3. Mandatory Failures</h2>
+    {% set failures = categories | rejectattr("present") | selectattr("mandatory") | list %}
+    {% if failures %}
+    <ul class="action-list">
+        {% for c in failures %}
+        <li><strong>{{ c.letter }} — {{ c.name }}</strong>: {{ c.failure_reason }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No mandatory category is absent. This notice was triggered by Rule 2 (minimum breadth) or
+    Rule 3 (minimum artifact count) instead — see Coverage Analysis above.</p>
+    {% endif %}
+</div>
+
+<!-- 4. Professional Opinion -->
+<div class="section">
+    <h2>4. Professional Opinion</h2>
+    <div class="opinion-box">
+        <p>{{ notice.professional_opinion }}</p>
+    </div>
+</div>
+
+<!-- 5. Recommendation -->
+<div class="section">
+    <h2>5. Recommendation</h2>
+    <ul class="action-list">
+        {% for item in notice.recommendations %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<!-- 6. Next Step -->
+<div class="section">
+    <h2>6. Next Step</h2>
+    <p>{{ notice.next_step }}</p>
+</div>
+
+<div class="footer">
+    <p>IEM-PM Intelligence Engine | Local-First Audit | Read-Only Analysis</p>
+    <p>No Gap Register. No Reporting Integrity Score. Generated: {{ generated_at }}</p>
+</div>
+
+</body>
+</html>

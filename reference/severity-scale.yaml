@@ -1,0 +1,48 @@
+name: Severity Scale (1–5)
+source: scoring.md, §9.1 Severity (1–5)
+version: 1.0.0
+
+# The official severity: consumed by the Manifest, schema and RIS (§9.1).
+# Appendix D (severity-matrix.yaml) is calibration reference only, not a parsed input.
+instructions: >
+  Every finding gets a severity rating. Use the full scale.
+  Base on delivery threat, not documentation completeness.
+  Consider spread: a gap affecting one project is lower severity than the same gap affecting all projects in a portfolio.
+  Consider persistence: a one-time error is lower severity than a gap that has existed across multiple reporting periods.
+
+levels:
+  - severity: 1
+    label: Cosmetic
+    what: The gap exists but has no material impact on delivery capability or decision quality.
+    examples:
+      - A field is inconsistently formatted but the data is readable and usable.
+      - A template has a typo in the header.
+  - severity: 2
+    label: Minor
+    what: The gap causes friction, rework, or confusion but does not threaten delivery outcomes.
+    examples:
+      - Status reports lack a required section but the missing data is available elsewhere.
+      - A governance pack is late by one day.
+  - severity: 3
+    label: Moderate
+    what: The gap degrades a specific process or decision but does not cascade to other processes.
+    examples:
+      - Risk register lacks mitigation plans for 20% of risks.
+      - Baseline exists but was approved after work began.
+  - severity: 4
+    label: Major
+    what: The gap threatens delivery outcomes, breaks a critical process, or creates significant compliance exposure.
+    examples:
+      - No earned value measurement on a fixed-price contract.
+      - Steering committee has not met in 6 months on a critical program.
+      - RAID log is missing all high-severity risks.
+  - severity: 5
+    label: Critical
+    what: The gap threatens program/portfolio failure, regulatory breach, or strategic objective collapse.
+    examples:
+      - No baseline exists for any project in the portfolio.
+      - Financial controls are bypassed.
+      - Governance packs are fabricated or backdated.
+
+# §10.2.3: Severity 4 or 5 requires a real human's approval before the finding is final.
+human_approval_required_at_or_above: 4
