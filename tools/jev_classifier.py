@@ -17,8 +17,8 @@ except ValueError:
 if not (0.0 <= CONFIDENCE_THRESHOLD <= 1.0):
     raise ValueError("CONFIDENCE_THRESHOLD must be between 0 and 1")
 
-# ───────── Locate reference/ relative to this file ─────────
-REFERENCE_DIR = Path(__file__).parent.parent / "reference"
+# ───────── Locate tools/rules/ relative to this file ─────────
+REFERENCE_DIR = Path(__file__).parent / "rules"
 
 # ───────── Helper: load one taxonomy file ─────────
 def load_taxonomy(filename: str) -> dict:

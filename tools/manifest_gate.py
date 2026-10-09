@@ -10,8 +10,7 @@ from langchain.tools import tool, ToolRuntime
 from tools.jev_classifier import normalize, evidence_quotes
 
 # ───────── Locations (your engine, unedited; output folder from .env) ─────────
-PROJECT_DIR = Path(__file__).resolve().parent.parent
-SCRIPTS_DIR = PROJECT_DIR / "engine" / "scripts"
+SCRIPTS_DIR = Path(__file__).resolve().parent / "engine" / "scripts"
 
 _out = os.getenv("AUDIT_OUTPUT_DIR")
 if not _out:

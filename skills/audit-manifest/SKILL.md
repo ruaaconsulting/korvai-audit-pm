@@ -3,20 +3,11 @@ name: audit-manifest
 description: The parser-grade Audit Manifest format (SKILL.md section 10.2). Read this at Stage 7 (Synthesize) before writing the Audit Manifest. Follow it exactly; software parses it.
 ---
 
-## 10.2 Format Rules (parser-grade)
-
-## Contents
-
-- [10.2.1 Header Block Template](#1021-header-block-template)
-- [10.2.2 Per-Artifact Evidence Log Template](#1022-per-artifact-evidence-log-template)
-- [10.2.3 Finding Block Template](#1023-finding-block-template)
-- [Example: Complete Finding Block](#example-complete-finding-block)
-- [10.2.4 Synthesis Section Template](#1024-synthesis-section-template)
-- [10.2.5 Appendix Template](#1025-appendix-template)
+## Format Rules (parser-grade)
 
 Follow these rules exactly. Software parses this file with regex and markdown parsers.
 
-### 10.2.1 Header Block Template
+### Header Block Template
 
 ```markdown
 # IEM-PM Audit Manifest
@@ -42,7 +33,7 @@ model/skill versions doing the analysis (v1.4.0 — provenance, not a taxonomy o
 If either is genuinely unavailable, write "unknown" rather than fabricate a plausible-looking
 value — software falls back to "unknown" itself if the field is missing entirely.
 
-### 10.2.2 Per-Artifact Evidence Log Template
+### Per-Artifact Evidence Log Template
 
 For every artifact declared in the Charter, write:
 
@@ -61,7 +52,7 @@ The `(X%)` figure is mandatory, not optional narration — the parser needs an e
 (or an "N of M" count it can compute one from) to populate `field_coverage_pct`. A prose-only
 count with no percentage and no "of" phrasing cannot be parsed and will be dropped.
 
-### 10.2.3 Finding Block Template
+### Finding Block Template
 
 One block per gap. This is the parser's critical section.
 
@@ -129,7 +120,7 @@ Rules for Finding Blocks:
 - **Artifact:** ART-001 | **Location:** Schedule.xlsx, Column D, all 47 rows | **Evidence:** Field `baseline_start` is null across all rows. Field `baseline_finish` is null across all rows.
 - **Artifact:** ART-003 | **Location:** Governance Pack, Page 4 | **Evidence:** "Schedule baseline approved: [blank]" — no date, no signature.
 
-### 10.2.4 Synthesis Section Template
+### Synthesis Section Template
 
 ## SYNTHESIS
 
@@ -161,7 +152,7 @@ Rules for Finding Blocks:
 
 [Narrative diagnostic only. No scores, percentages, or grades.]
 
-### 10.2.5 Appendix Template
+### Appendix Template
 
 ## APPENDIX
 
